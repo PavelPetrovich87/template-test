@@ -1,0 +1,503 @@
+# Neural Breach: Game Design Document
+
+**Project Name:** Neural Breach  
+**Tagline:** *Train your working memory by hacking corporate firewalls.*  
+**Platform:** Web (React/Vue), Mobile-ready (responsive CSS)  
+**Target Audience:** Cognitive training enthusiasts, productivity-focused users, competitive learners  
+**Genre:** Educational Cognitive Training + Idle RPG  
+
+---
+
+## 1. Executive Summary
+
+Neural Breach wraps the scientifically-proven **Dual N-Back** working memory training task inside a cyberpunk hacking narrative. Users are "hackers" attempting to breach firewalls by maintaining focus on a dual-stream memory task while managing a "Connection Stability" resource. The core training mechanic is preserved (two concurrent stimulus streams, adaptive difficulty, immediate feedback), but wrapped in a **Terminal UI** with simple progression systems (Data Shards, Hardware Upgrades, Themes) that reward consistent play without adding cognitive load during training.
+
+**Key Design Philosophy:** The game should feel rewarding, not punitive. Every correct answer is a tiny victory. Every mistake costs you something (Stability, Data Shards), but doesn't break the training flow or data collection.
+
+---
+
+## 2. Core Gameplay Loop
+
+### 2.1 The Training Session ("Breach Attempt")
+
+**Duration:** 3–5 minutes per session (customizable)  
+**Structure:** One session consists of multiple *blocks*, each block = 20 trials (1 trial = 1 stimulus pair)
+
+#### The N-Back Task (Unchanged)
+- **Visual Stream:** A 3×3 grid. One cell lights up every 2–3 seconds.
+- **Audio Stream:** A letter (A–Z) plays every 2–3 seconds.
+- **Player Input:** Two buttons (or keyboard keys).
+  - Button 1: "Match Audio" (press if the current letter matches the letter from *n* steps back).
+  - Button 2: "Match Position" (press if the current grid cell matches the cell from *n* steps back).
+- **Difficulty:** Starts at n=2. Adapts:
+  - **Accuracy ≥ 80%:** Increase to n+1.
+  - **Accuracy ≤ 60%:** Decrease to n−1.
+  - Adapts once per block.
+
+#### New Layer: Connection Stability
+
+**What it is:** A health bar representing your "hacker's connection to the target."
+
+**Mechanics:**
+- **Starting Value:** 100% per block.
+- **Correct Match:** Stability holds (no change). Player earns +1 Data Shard.
+- **Correct Non-Match (Correctly NOT pressing):** Stability holds. Player earns +1 Data Shard.
+- **False Alarm (Pressing when no match):** Stability drops by 15%. Player earns 0 Shards. *Visual Feedback:* Screen border flashes red (0.3s CSS animation).
+- **Miss (Not pressing when there IS a match):** Stability drops by 10%. Player earns 0 Shards. *Visual Feedback:* Screen border flashes yellow (0.3s CSS animation).
+- **Zero Stability Reached:** Block continues (data is still collected for research), but UI enters "Safe Mode":
+  - Screen desaturates (opacity: 0.6, grayscale: 50%).
+  - No more Data Shards earned for the rest of the block.
+  - Stability bar shows a warning badge: "⚠ Connection Lost."
+
+**Why:** Stability adds emotional stakes without changing the training. Users feel they are "protecting a resource" rather than just answering questions.
+
+### 2.2 Block End Screen
+
+After 20 trials, the session pauses and shows:
+
+```
+┌─────────────────────────────────────┐
+│         BLOCK COMPLETED             │
+├─────────────────────────────────────┤
+│ Accuracy:        85%                │
+│ Data Shards:     17 / 20             │
+│ Current N-Level: 3                  │
+│ Connection:      ✓ Stable           │
+│ Next Block:      n=4                │
+├─────────────────────────────────────┤
+│         [CONTINUE] [QUIT]           │
+└─────────────────────────────────────┘
+```
+
+**Options:**
+- **CONTINUE:** Start the next block at the new n-level.
+- **QUIT:** End the session, show final summary, deposit all earned Shards into the account.
+
+### 2.3 Session End Screen
+
+After the user quits or completes the target block count:
+
+```
+┌─────────────────────────────────────┐
+│       BREACH SESSION COMPLETE       │
+├─────────────────────────────────────┤
+│ Total Blocks:        5              │
+│ Total Shards:        82             │
+│ Avg Accuracy:        78%            │
+│ Peak N-Level:        4              │
+│ Session Time:        14 min 32 sec  │
+│ Streak Bonus:        +5 Shards      │
+├─────────────────────────────────────┤
+│    💾 All rewards locked in! 💾    │
+│   [BACK TO MENU] [SOCIAL SHARE]     │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 3. Resource Economy
+
+### 3.1 Data Shards (Primary Currency)
+
+**What it represents:** Stolen data = reward for successfully maintaining focus.
+
+**Earning Rules:**
+- **Base Rate:** 1 Shard per correct trial.
+- **Streak Bonus:** 5 consecutive correct trials → Next correct match = 2 Shards.
+- **Session Bonus:** Complete all blocks without losing Stability to zero → +5 bonus Shards.
+- **Daily Bonus:** If you train 3+ days in a row → Session rewards × 1.2 multiplier.
+
+**Spending:**
+- Buy Hardware upgrades (see Section 4).
+- Buy cosmetic themes.
+- *Future expansion:* Trade for leaderboard entries or seasonal badges.
+
+**Display:** Top-right corner of the main UI. Icon: `💾` next to a number. Persistent across sessions.
+
+---
+
+## 4. Progression System: Hardware Upgrades
+
+### 4.1 The Premise
+
+Your "Hacking Rig" is a computer with upgradeable components. Each component improves your training experience *without changing the dual n-back logic itself*.
+
+### 4.2 Upgrade Tiers
+
+#### Tier 1: Foundational (100–300 Shards)
+
+| Upgrade Name | Effect | Cost | Description |
+| :--- | :--- | :---: | :--- |
+| **Buffer Expansion** | Stability damage reduced by 25% (errors cost 12% instead of 15%). | 150 | Slightly forgiving; good for beginners. |
+| **Overclock CPU** | +10% more Shards earned per trial. | 200 | Passive income boost. |
+| **Enhanced Cooling** | Unlock custom session length (10–30 blocks instead of fixed 5). | 100 | Let users tailor their workout. |
+
+#### Tier 2: Intermediate (400–700 Shards)
+
+| Upgrade Name | Effect | Cost | Description |
+| :--- | :--- | :---: | :--- |
+| **Dual-Core Processor** | +15% Shards. Stacks with Overclock CPU. | 500 | Serious grinders start here. |
+| **Predictive Algorithms** | Reduce stimulus presentation speed by 0.2s, giving a tiny reaction-time cushion. | 400 | Helps with faster n-levels (n=4, n=5). |
+| **Stability Regeneration** | Stability naturally recovers +2% per block (instead of staying static). | 600 | Rewards consistent play. |
+
+#### Tier 3: Advanced (800+ Shards)
+
+| Upgrade Name | Effect | Cost | Description |
+| :--- | :--- | :---: | :--- |
+| **Full Neural Integration** | Unlock "Challenge Mode": Compete against a leaderboard of your past runs. | 1000 | Competitive metagame. |
+| **Failsafe Protocol** | Once per session, auto-save a Stability crash to 50% instead of triggering Safe Mode. | 800 | Insurance; premium feature. |
+| **Temporal Analysis** | Unlock "Focus Replay": Rewatch your best session to analyze your decision patterns. | 1200 | Self-improvement tool. |
+
+### 4.3 Visual Representation
+
+The "Upgrade Shop" is a simple menu:
+
+```
+┌─────────────────────────────────────┐
+│        HARDWARE STORE               │
+│   Your Balance: 250 Shards 💾       │
+├─────────────────────────────────────┤
+│                                     │
+│ ✓ Buffer Expansion          [OWNED] │
+│   Stability damage -25%              │
+│                                     │
+│ • Overclock CPU               [200] │
+│   +10% Shards earned                │
+│                                     │
+│ • Enhanced Cooling            [100] │
+│   Custom session lengths            │
+│                                     │
+│ • Dual-Core Processor         [500] │
+│   +15% Shards (LOCKED)              │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+Users can click each upgrade to see a tooltip with full details.
+
+---
+
+## 5. Cosmetics & Themes
+
+### 5.1 Terminal Themes
+
+Visual customization has **zero** gameplay impact. Pure cosmetics, purchased with Shards.
+
+#### Available Themes (Launch)
+
+| Theme Name | Colors | Cost | Vibe |
+| :--- | :--- | :---: | :--- |
+| **Default (System)** | Green/Black | Free | Classic Matrix aesthetic. |
+| **Amber Retro** | Amber/Black | 300 | 1980s CRT monitor feel. |
+| **Vaporwave** | Purple/Cyan/Pink | 500 | Synthwave aesthetic. |
+| **Monochrome** | White/Black | 200 | Minimalist, clean. |
+| **Cyberpunk Neon** | Cyan/Magenta/Black | 750 | Edgy, modern hacker aesthetic. |
+
+Each theme changes:
+- Foreground text color.
+- Accent/highlight colors (for Stability bar, alerts).
+- Background/border colors.
+- Optional glow/shadow effects (CSS only, no performance cost).
+
+---
+
+## 6. User Interface Layout
+
+### 6.1 During-Session Screen
+
+```
+┌──────────────────────────────────────────────┐
+│ NEURAL BREACH v1.0                    [⚙️]   │
+├──────────────────────────────────────────────┤
+│                                              │
+│  ┌──────────────────────────────────────┐   │
+│  │  Connection Stability: ████████░░░░░ 75%│
+│  └──────────────────────────────────────┘   │
+│                                              │
+│           ┌─────────┐                       │
+│           │  █ █ █  │  Audio: [C]          │
+│           │  █ █ █  │  N-Level: 3          │
+│           │  █ █ █  │  Trial: 12/20        │
+│           └─────────┘                       │
+│                                              │
+│        [MATCH AUDIO]  [MATCH POSITION]      │
+│                                              │
+│  Data Shards: 11 💾   |   Accuracy: 82%    │
+│                                              │
+│                 [PAUSE] [QUIT]              │
+└──────────────────────────────────────────────┘
+```
+
+**Key Elements:**
+- **Top Bar:** Title, settings icon.
+- **Stability Bar:** Primary feedback. Color changes: Green (>70%), Yellow (40–70%), Red (<40%).
+- **Grid + Audio Display:** Center stage, large and clear.
+- **Input Buttons:** Two large, touchable buttons below the grid.
+- **Stats Row:** Real-time Shards count, current accuracy, n-level.
+- **Action Buttons:** Pause (temporary), Quit (end session).
+
+### 6.2 Main Menu
+
+```
+┌──────────────────────────────────────────────┐
+│          🔐 NEURAL BREACH 🔐                │
+│     Cognitive Training via Hacking          │
+├──────────────────────────────────────────────┤
+│                                              │
+│              [START BREACH]                 │
+│                                              │
+│              [LEADERBOARD]                  │
+│                                              │
+│              [HARDWARE STORE]               │
+│                                              │
+│              [STATS & HISTORY]              │
+│                                              │
+│              [SETTINGS]                     │
+│                                              │
+│           Balance: 485 Shards 💾            │
+│           Streak: 5 days 🔥                 │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Data & Analytics
+
+### 7.1 What We Track (For Research)
+
+The app logs every trial with:
+- Timestamp
+- Stimulus (grid position + audio letter)
+- N-level at trial
+- User response (match / non-match)
+- Accuracy (correct / incorrect / false alarm / miss)
+- Reaction time (ms)
+- Stability at trial start
+
+**Reporting:** Users can view:
+- **Session History:** A table of all past sessions (date, duration, peak n-level, avg accuracy).
+- **Progress Graph:** Working memory growth over time (x-axis: days, y-axis: peak n-level reached).
+- **Personal Best:** "Highest n-level reached: 5" or "Best accuracy: 94%."
+
+### 7.2 Leaderboard (Optional, Social)
+
+**Leaderboard Types:**
+- **Weekly Peak N-Level:** Who reached the highest n-level this week?
+- **Accuracy Champions:** Who maintained >90% accuracy?
+- **Consistency Kings:** Who trained the most days in a row?
+
+**Anonymous by default.** Users can opt-in to show their username.
+
+---
+
+## 8. Technical Architecture (Developer Notes)
+
+### 8.1 Core State Management
+
+```javascript
+// Pseudo-code structure
+const sessionState = {
+  currentNLevel: 2,
+  currentBlock: 0,
+  totalBlocks: 5,
+  stability: 100,
+  dataShardsEarned: 0,
+  streakCorrect: 0,
+  trials: [
+    { timestamp, stimulus, response, isCorrect, reactionTime },
+    // ...
+  ],
+};
+
+const userState = {
+  totalShards: 485,
+  ownedUpgrades: ['buffer_expansion', 'overclock_cpu'],
+  currentTheme: 'amber_retro',
+  sessionHistory: [...],
+};
+```
+
+### 8.2 Key Subsystems
+
+| Subsystem | Responsibility |
+| :--- | :--- |
+| **Stimulus Generator** | Create random grid + audio sequences respecting n-back rules. |
+| **Difficulty Adapter** | Adjust n-level based on accuracy after each block. |
+| **Input Handler** | Capture button presses, validate timing, store reaction time. |
+| **Feedback Engine** | Update Stability, increment Shard count, queue animations (border flash). |
+| **Persistence Layer** | Save session data to backend (or localStorage for MVP). |
+| **Shop Engine** | Validate purchases, apply upgrade effects to user state. |
+| **Analytics Dashboard** | Compute stats (accuracy %, peak n, trends) for display. |
+
+### 8.3 Frontend Stack Suggestion
+
+Given your React/Vue expertise:
+- **Framework:** React (Hooks for state) or Vue 3 (Composition API).
+- **Styling:** CSS-in-JS (Styled Components) or Tailwind for rapid theming.
+- **State Management:** Zustand or Pinia (lightweight, fast).
+- **Storage:** IndexedDB for offline-first session caching; sync to backend on network.
+- **Animations:** CSS keyframes only (no GPU-heavy JS animations during trials).
+
+### 8.4 Backend (Optional for MVP)
+
+**Minimal Backend:**
+- User authentication (Firebase Auth or similar).
+- Session data storage (Firestore or PostgreSQL).
+- Leaderboard aggregation.
+
+**For MVP:** Could be entirely client-side (localStorage + export-to-JSON for backup).
+
+---
+
+## 9. Monetization Strategy
+
+### 9.1 Ad Placement
+
+**Non-Intrusive Locations:**
+- **Banner Ads:** Bottom of the main menu (below "Balance: 485 Shards").
+- **Interstitial Ads:** *Optional:* After session completion, before showing the end screen (skip option available).
+- **Rewarded Ads:** Optional. Users can watch a 15–30s ad to earn +50 bonus Shards (once per day).
+
+**Ad-Free Tier (Paid Optional):**
+- One-time $4.99 purchase removes all ads.
+- Does not affect training or upgrades.
+
+### 9.2 Cosmetics (In-App Purchase)
+
+Premium themes (Vaporwave, Cyberpunk Neon) could be purchasable with real money ($0.99 each) *or* Shards. This creates a "Shard sink" for engaged players while offering a shortcut to impatient spenders.
+
+---
+
+## 10. Engagement Loops
+
+### 10.1 Daily Loop (5–15 minutes)
+
+1. User opens app.
+2. Sees "3-day streak 🔥" banner (social proof).
+3. Clicks "START BREACH."
+4. Completes 5 blocks (~12 minutes).
+5. Earns 80 Shards (net).
+6. Views session end screen, feels accomplished.
+7. Notices "Only 120 Shards to Dual-Core Processor!" Motivation to return tomorrow.
+
+### 10.2 Weekly Loop
+
+1. User accumulates 300+ Shards.
+2. Unlocks a new upgrade from the shop.
+3. Uses it in next session, feels a tangible improvement (e.g., "Stability damage reduced!").
+4. Posts session screenshot to social (achievement sharing).
+
+### 10.3 Monthly Loop
+
+1. User reviews progress graph. "I went from n=2 to n=4 in 2 weeks!"
+2. Competes on leaderboard for "Peak N-Level."
+3. Aims to reach n=5 to beat their record.
+
+---
+
+## 11. Success Metrics
+
+### 11.1 For Users (Engagement)
+
+- **Daily Active Users (DAU):** Target 40%+ of installed base.
+- **Session Duration:** Average 12–15 minutes per session.
+- **Retention:** 30-day retention >50%.
+- **Social Sharing:** >20% of users share a session result weekly.
+
+### 11.2 For Science (Training Efficacy)
+
+- **Working Memory Gains:** Users who complete 10+ sessions show measurable n-level improvement (tracked in analytics).
+- **Data Integrity:** >95% of trial data is usable for cognitive science research.
+- **Publication:** Findings submitted to peer-reviewed cognitive neuroscience journal.
+
+---
+
+## 12. Roadmap
+
+### Phase 1 (MVP): Months 1–2
+- [ ] Core dual n-back engine (stimulus generator, input handler, adapter).
+- [ ] Stability bar + Shard economy.
+- [ ] Basic shop with 3–5 foundational upgrades.
+- [ ] Session history view.
+- [ ] Cosmetic themes (3 default).
+- [ ] Ads + social sharing.
+
+### Phase 2 (Engagement): Months 3–4
+- [ ] Leaderboard (weekly).
+- [ ] Daily login streak counter.
+- [ ] Rewarded ad system.
+- [ ] Advanced analytics dashboard.
+- [ ] Community features (username, optional opt-in to leaderboards).
+
+### Phase 3 (Polish): Months 5–6
+- [ ] Mobile app (React Native or Flutter wrapper).
+- [ ] Challenge mode ("Replay a friend's run").
+- [ ] Premium themes (purchasable or premium tier).
+- [ ] Backend optimization for scale.
+
+---
+
+## 13. Risks & Mitigation
+
+| Risk | Mitigation |
+| :--- | :--- |
+| Users quit due to difficulty spikes. | Stability bar acts as a "safety net." Failsafe Protocol upgrade available. Tutorial session explains difficulty adaptation. |
+| Ad fatigue reduces retention. | Ads only on menu, optional rewarded, skip-friendly. Premium tier removes ads. |
+| N-back is inherently "boring." | Terminal UI + resource economy provides extrinsic motivation. |
+| Data privacy concerns. | Clear privacy policy. Data tied to anonymous session IDs by default. Opt-in for leaderboard. |
+| Server costs scale poorly. | MVP is client-side first. Minimal backend for auth + leaderboards. |
+
+---
+
+## 14. Appendix: Quick Reference
+
+### Upgrade Costs & Effects (Full Table)
+
+| Name | Cost | Effect | Tier |
+| :--- | ---: | :--- | :--- |
+| Buffer Expansion | 150 | −25% Stability damage | 1 |
+| Overclock CPU | 200 | +10% Shards | 1 |
+| Enhanced Cooling | 100 | Custom session length | 1 |
+| Dual-Core Processor | 500 | +15% Shards | 2 |
+| Predictive Algorithms | 400 | −0.2s stimulus delay | 2 |
+| Stability Regeneration | 600 | +2% Stability/block | 2 |
+| Full Neural Integration | 1000 | Leaderboard mode | 3 |
+| Failsafe Protocol | 800 | 1× per session crash save | 3 |
+| Temporal Analysis | 1200 | Session replay tool | 3 |
+
+### Theme Costs & Names
+
+| Theme | Cost | Type |
+| :--- | ---: | :--- |
+| System (Green) | Free | Default |
+| Monochrome | 200 | Simple |
+| Amber Retro | 300 | Retro |
+| Vaporwave | 500 | Premium |
+| Cyberpunk Neon | 750 | Premium |
+
+---
+
+**End of Document**
+
+---
+
+## Design Notes for Development
+
+1. **Preserve the Science:** Every change to UI/UX must be validated against the core n-back principles. When in doubt, ask: "Does this distract the user from the dual streams?"
+
+2. **Minimize Animation:** CSS-only animations on non-critical elements (borders, text color). No GPU-heavy transforms during trials.
+
+3. **Mobile-First CSS:** The grid and buttons must be touchable and not cramped on a 5-inch phone.
+
+4. **Accessibility:** High contrast (WCAG AA). All interactive elements keyboard-accessible. Screen reader friendly.
+
+5. **Performance:** Session logic should run at 60 FPS. Stimulus timing must be precise (±50ms tolerance). Use `requestAnimationFrame` for smooth renders.
+
+6. **Data Export:** Users should be able to export their session history as CSV for personal records or research collaboration.
+
+---
+
+**Version:** 1.0  
+**Last Updated:** 2025-12-02  
+**Status:** Ready for Development

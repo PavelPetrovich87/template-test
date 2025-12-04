@@ -1,0 +1,24 @@
+{
+  "name": "cursor-multi-agent-template",
+  "version": "1.0.0",
+  "description": "A reusable boilerplate for multi-agent AI development in Cursor IDE",
+  "keywords": [
+    "cursor",
+    "ai",
+    "agents",
+    "react-native",
+    "expo",
+    "nodejs",
+    "template"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "scripts": {
+    "init": "./scripts/init-cursor-agents.sh",
+    "setup": "./scripts/init-cursor-agents.sh"
+  }
+}
