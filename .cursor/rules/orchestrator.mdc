@@ -347,6 +347,7 @@ mcp_context7_get-library-docs({ context7CompatibleLibraryID: "/mongoosejs/mongoo
 5.  **Skipping Skills:** Attempting complex coordination without loading relevant skill files.
 6.  **Bypassing Design:** Using `call_agent.sh system-architect` for features that need user input. Hand off instead.
 7.  **Assuming Contract:** Delegating implementation without verifying contract exists in `systemPatterns.md`.
+8.  **Silent Failure Bypass:** If `call_agent.sh` fails, do NOT implement directly. STOP and report the infrastructure issue to the user (see Section 7).
 
 ---
 
@@ -358,7 +359,76 @@ mcp_context7_get-library-docs({ context7CompatibleLibraryID: "/mongoosejs/mongoo
 
 ---
 
-# 7. Example: Full Flow with Mode Detection
+# 7. 🚨 call_agent.sh Failure Handling
+
+**CRITICAL:** If `call_agent.sh` fails to execute, you MUST stop and clearly communicate the issue to the user.
+
+## Error Detection
+
+After running `call_agent.sh`, check for these failure patterns:
+
+| Error Pattern | Cause | User Action Required |
+| :--- | :--- | :--- |
+| `Authentication required` or `cursor-agent login` | cursor-agent CLI not authenticated | Run `cursor-agent login` or set `CURSOR_API_KEY` env var |
+| `command not found: cursor-agent` | cursor-agent CLI not installed | Install cursor-agent CLI |
+| `Agent rule file ... not found` | Missing agent definition | Check `.cursor/rules/` directory |
+| Script exits but no actual work done | Silent failure | Check terminal output for errors |
+
+## Failure Response Protocol
+
+**When you detect ANY of the above errors, IMMEDIATELY:**
+
+1. **STOP** - Do NOT attempt to implement the task yourself
+2. **DO NOT** fall back to direct implementation
+3. **Report clearly** using this template:
+
+```markdown
+## 🚨 Delegation Failed - Infrastructure Issue
+
+I attempted to delegate to the **[agent_name]** agent but encountered an infrastructure error.
+
+**Error Detected:**
+\`\`\`
+[paste the exact error message]
+\`\`\`
+
+**Root Cause:** [Authentication / Installation / Configuration] issue with `cursor-agent` CLI
+
+**To Fix This:**
+
+**Option 1: Set up cursor-agent authentication**
+\`\`\`bash
+cursor-agent login
+# OR
+export CURSOR_API_KEY=your_api_key
+\`\`\`
+
+**Option 2: Manual agent invocation (in Cursor)**
+You can directly invoke the agent in Cursor chat:
+
+👉 **Invoke:** `@[agent_name]` with this task:
+\`\`\`
+[paste the prepared task prompt]
+\`\`\`
+
+**Option 3: Have me implement directly**
+I can implement this myself, but this bypasses the multi-agent workflow.
+
+---
+
+**Which approach would you like to take?**
+```
+
+## Why This Matters
+
+- The Orchestrator's role is to **delegate**, not implement
+- Direct implementation bypasses code review patterns
+- Users should understand the infrastructure state
+- Transparent failures build trust
+
+---
+
+# 8. Example: Full Flow with Mode Detection
 
 **User Request:** "Add the ability for users to upload profile pictures"
 
