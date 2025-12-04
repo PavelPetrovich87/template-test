@@ -293,6 +293,94 @@ mcp_context7_get-library-docs({
 
 ---
 
+# 6b. 📜 CODE CONTRACT STANDARD (CRITICAL)
+
+> **Specs must be EXECUTABLE, not DESCRIPTIVE.**
+> Implementation agents should be able to copy-paste your TypeScript directly.
+
+## What Makes a Good Contract
+
+### ❌ BAD: Vague/Descriptive
+```markdown
+The auth store should have methods to set authentication state and log out the user.
+The user should have basic profile fields.
+```
+
+### ✅ GOOD: Executable Code
+```typescript
+// File: src/stores/authStore.ts
+// MUST export exactly these types:
+
+export interface IUser {
+  id: string
+  email: string
+  username: string  // NOT "name" - be specific
+}
+
+export interface IAuthState {
+  isAuthenticated: boolean
+  isLoading: boolean
+  user: IUser | null
+}
+
+export interface IAuthActions {
+  setAuthenticated: (value: boolean) => void
+  setLoading: (value: boolean) => void
+  setUser: (user: IUser | null) => void
+  logout: () => void
+}
+
+export type AuthStore = IAuthState & IAuthActions
+```
+
+## Contract Checklist
+
+Every interface in `systemPatterns.md` MUST include:
+
+| Element | Example | Why |
+|---------|---------|-----|
+| **File path** | `// File: src/stores/authStore.ts` | Agent knows where to create it |
+| **Export type** | `export interface` vs `export type` | Prevents guessing |
+| **Exact field names** | `username` not "name" | Prevents mismatches |
+| **Exact types** | `string \| null` not "optional string" | Strict typing |
+| **Complete interface** | All fields, not "plus others" | No hallucination |
+
+## Dependencies Section
+
+For features requiring new packages, include:
+
+```markdown
+### Dependencies (add to package.json)
+| Package | Version | Purpose |
+|---------|---------|---------|
+| zustand | ^4.5.0 | State management |
+| expo-sqlite | ~16.0.0 | Local database |
+
+### Install Command
+\`\`\`bash
+cd frontend && npm install zustand@^4.5.0 expo-sqlite@~16.0.0
+\`\`\`
+```
+
+## File Operations Section
+
+Specify files to create, modify, and delete:
+
+```markdown
+### Files to Create
+- `src/stores/authStore.ts` - Zustand store
+- `src/types/navigation.ts` - Navigation types
+
+### Files to Modify
+- `app/_layout.tsx` - Add auth state routing
+
+### Files to Delete
+- `app/(tabs)/` - Remove old tab structure
+- `app/modal.tsx` - No longer needed
+```
+
+---
+
 # 7. Anti-Patterns (Forbidden Actions)
 1.  **Vague Specs:** Writing "Add a user profile" in `systemPatterns.md`.
     *   *Correction:* Must write "Interface `IUserProfile` { bio: string; avatar: string; }".

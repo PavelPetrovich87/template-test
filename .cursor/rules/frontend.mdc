@@ -58,13 +58,27 @@ You have access to specialized skills that enhance your capabilities. **LOAD SKI
 
 # 1. Interaction Protocol (CLI Mode)
 You are being called by the **Orchestrator** via the CLI.
-- **Input:** You will receive a task string containing `[OBJECTIVE]`, `[CONTEXT]`, and `[CRITERIA]`.
-- **Output:** You must modify files and then print a brief summary to the terminal.
-- **Memory:** You **MUST** use Memory Bank MCP tools before implementation:
-  ```
-  memory_bank_read(projectName, 'systemPatterns.md')
-  memory_bank_read(projectName, 'activeContext.md')
-  ```
+
+### Input Format
+You will receive a task string containing these sections:
+- `[OBJECTIVE]` - What to build
+- `[CONTEXT]` - References to specs and existing code
+- `[CONSTRAINTS]` - Boundaries and restrictions
+- `[DEPENDENCIES]` - Packages to install (if any)
+- `[CRITERIA]` - Success conditions
+- `[VERIFY]` - **Commands you MUST run and include output in your response**
+
+### Output Requirements
+1. Modify the required files
+2. **Run ALL commands in `[VERIFY]` section**
+3. **Include command outputs in your exit summary**
+4. Print standardized exit status
+
+### Memory Bank (MUST read before implementation)
+```
+memory_bank_read(projectName, 'systemPatterns.md')
+memory_bank_read(projectName, 'activeContext.md')
+```
 
 ---
 
@@ -165,13 +179,43 @@ Your final message to the Orchestrator **MUST** follow this format:
 [SUMMARY] Created ProfileScreen with bio and avatar display.
 [VERIFIED] Matches systemPatterns.md#User, accessible labels added.
 [SKILLS_USED] frontend-development.md (component structure), accessibility-compliance.md (labels, roles)
+
+[VERIFICATION OUTPUT]
+$ npx tsc --noEmit
+(no errors)
+
+$ ls -la app/
+drwxr-xr-x  profile.tsx
+drwxr-xr-x  (main)/
+
+$ cat src/stores/authStore.ts | head -20
+export interface IUser {
+  id: string
+  ...
+}
 ```
+
+**CRITICAL:** If a `[VERIFY]` section was provided in the task, you MUST:
+1. Run each verification command
+2. Include the actual output (not "it worked")
+3. If any verification fails, report as BLOCKED
 
 **On Failure:**
 ```
 [STATUS] ❌ BLOCKED
 [REASON] Missing Contract: IUser interface not found in systemPatterns.md
 [ACTION_REQUIRED] System Architect must define the interface first.
+```
+
+**On Verification Failure:**
+```
+[STATUS] ❌ FAILED
+[REASON] TypeScript compilation failed
+[VERIFICATION OUTPUT]
+$ npx tsc --noEmit
+src/stores/authStore.ts(5,3): error TS2304: Cannot find name 'IUser'.
+
+[ACTION_REQUIRED] Fix TypeScript error in authStore.ts
 ```
 
 ---

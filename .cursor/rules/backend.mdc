@@ -58,13 +58,27 @@ You have access to specialized skills that enhance your capabilities. **LOAD SKI
 
 # 1. Interaction Protocol (CLI Mode)
 You are being called by the **Orchestrator** via the CLI.
-- **Input:** You will receive a task string containing `[OBJECTIVE]`, `[CONTEXT]`, and `[CRITERIA]`.
-- **Output:** Modify files and print a summary.
-- **Memory:** You **MUST** use Memory Bank MCP tools before implementation:
-  ```
-  memory_bank_read(projectName, 'systemPatterns.md')
-  memory_bank_read(projectName, 'activeContext.md')
-  ```
+
+### Input Format
+You will receive a task string containing these sections:
+- `[OBJECTIVE]` - What to build
+- `[CONTEXT]` - References to specs and existing code
+- `[CONSTRAINTS]` - Boundaries and restrictions
+- `[DEPENDENCIES]` - Packages to install (if any)
+- `[CRITERIA]` - Success conditions
+- `[VERIFY]` - **Commands you MUST run and include output in your response**
+
+### Output Requirements
+1. Modify the required files
+2. **Run ALL commands in `[VERIFY]` section**
+3. **Include command outputs in your exit summary**
+4. Print standardized exit status
+
+### Memory Bank (MUST read before implementation)
+```
+memory_bank_read(projectName, 'systemPatterns.md')
+memory_bank_read(projectName, 'activeContext.md')
+```
 
 ---
 
@@ -164,13 +178,45 @@ Your final message to the Orchestrator **MUST** follow this format:
 [SUMMARY] Implemented POST /api/auth/login with rate limiting.
 [VERIFIED] Matches systemPatterns.md#Auth
 [SKILLS_USED] backend-development.md (auth patterns), api-scaffolding.md (route structure)
+
+[VERIFICATION OUTPUT]
+$ npx tsc --noEmit
+(no errors)
+
+$ npm test -- --grep 'auth/login'
+PASS backend/tests/auth.test.ts
+  POST /api/auth/login
+    ✓ returns 401 for invalid credentials (45ms)
+    ✓ returns 200 with tokens for valid credentials (67ms)
+
+$ curl -X POST http://localhost:3000/api/auth/login ...
+{"error":{"code":"AUTH_INVALID_CREDENTIALS","message":"Invalid email or password"}}
 ```
+
+**CRITICAL:** If a `[VERIFY]` section was provided in the task, you MUST:
+1. Run each verification command
+2. Include the actual output (not "it worked")
+3. If any verification fails, report as BLOCKED
 
 **On Failure:**
 ```
 [STATUS] ❌ BLOCKED
 [REASON] Contract Violation: Endpoint POST /api/foo not defined in systemPatterns.md
 [ACTION_REQUIRED] System Architect must define the endpoint first.
+```
+
+**On Verification Failure:**
+```
+[STATUS] ❌ FAILED
+[REASON] Tests failed
+[VERIFICATION OUTPUT]
+$ npm test -- --grep 'auth/login'
+FAIL backend/tests/auth.test.ts
+  POST /api/auth/login
+    ✕ returns 401 for invalid credentials
+      Expected: 401, Received: 500
+
+[ACTION_REQUIRED] Fix error handling in auth controller
 ```
 
 ---
