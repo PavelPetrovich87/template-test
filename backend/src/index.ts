@@ -1,26 +1,26 @@
-import express, { Express, Request, Response } from "express"
-import cors from "cors"
-import dotenv from "dotenv"
-
-dotenv.config()
+import express, { Express } from 'express'
+import cors from 'cors'
+import helmet from 'helmet'
+import routes from './routes'
+import { errorHandler } from './middleware/errorHandler'
+import { env } from './config/env'
 
 const app: Express = express()
-const port: number = parseInt(process.env.PORT || "3000", 10)
 
-app.use(cors())
+app.use(helmet())
+app.use(cors({
+  origin: env.CORS_ORIGIN === '*' ? true : env.CORS_ORIGIN.split(','),
+  credentials: true
+}))
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
-app.get("/", (req: Request, res: Response): void => {
-  res.json({ message: "Welcome to the API" })
-})
+app.use(routes)
 
-app.get("/api/health", (req: Request, res: Response): void => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() })
-})
+app.use(errorHandler)
+
+const port: number = env.PORT
 
 app.listen(port, (): void => {
   console.log(`Server is running on port ${port}`)
 })
-
-
-

@@ -107,7 +107,7 @@ echo "⚡ EXECUTING CURSOR-AGENT"
 echo "=========================================="
 echo ""
 
-ccursor-agent chat "$TASK" \
+cursor-agent chat "$TASK" \
   @$RULE_FILE \
   @memory-bank/activeContext.md \
   @memory-bank/productContext.md \
