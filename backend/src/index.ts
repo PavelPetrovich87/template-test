@@ -24,3 +24,5 @@ const port: number = env.PORT
 app.listen(port, (): void => {
   console.log(`Server is running on port ${port}`)
 })
+
+
