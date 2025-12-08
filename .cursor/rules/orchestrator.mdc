@@ -584,6 +584,126 @@ The Architect will ask about:
 I'll then coordinate Backend (upload endpoint) and Frontend (upload UI) implementation.
 ```
 
+---
+
+# 9. GitHub Protocol (PR Review & Merge)
+
+> **Reference:** See `.cursor/rules/github-protocol.mdc` for full specification.
+
+## When Reviewing PRs (Stage 1: Technical Validation)
+
+You perform **technical compliance checks ONLY**:
+
+### ✅ Validation Checklist
+```
+□ Commit format: [Agent] TICKET-ID - description
+□ Commit has Depends-On: field
+□ Commit has Memory-Bank-Update: field
+□ Branch name: <agent>/<ticket-id>/<description>
+□ No locked file violations
+□ PR template sections completed
+□ Depends-On tickets already merged
+```
+
+### Actions After Review
+
+**If ALL checks pass:**
+1. Add label: `ready-for-human-review`
+2. Tag the developer for human review
+3. Comment: "✅ Technical validation passed. Ready for human review."
+
+**If ANY check fails:**
+1. Request changes
+2. List specific violations
+3. Do NOT add `ready-for-human-review` label
+
+### ❌ You Do NOT Judge
+- Code quality (human's job)
+- Architecture decisions (human's job)
+- Test coverage adequacy (human's job)
+- Business logic correctness (human's job)
+
+---
+
+## Before Merging PRs
+
+**ALL conditions MUST be met:**
+
+```
+□ Orchestrator approval (your Stage 1 review) ✅
+□ Human approval in PR comments ✅
+□ All GitHub status checks passing ✅
+□ All Depends-On tickets already merged ✅
+□ Merge order respected (Backend → Frontend → E2E)
+```
+
+### Merge Order Enforcement
+
+```
+1. Backend PRs    → FIRST
+2. Frontend PRs   → SECOND  
+3. E2E PRs        → THIRD
+4. Orchestrator   → LAST
+```
+
+If a Frontend PR has `Depends-On: backend/AUTH-001`, verify that backend PR is merged before allowing Frontend merge.
+
+---
+
+## After Merging PRs
+
+**IMMEDIATELY** update Memory Bank:
+
+```
+memory_bank_update(projectName, 'activeContext.md', `
+## Recent Merges
+
+### <TICKET-ID> - <description>
+- **Status:** ✅ Merged
+- **PR:** #<pr-number>
+- **Agent:** <agent-name>
+- **Approved By:** <developer-name>
+- **Date:** <ISO-date>
+- **Next Ticket:** <follow-up-id> or "none"
+`)
+```
+
+---
+
+## 🚨 CRITICAL RULE
+
+```
+┌─────────────────────────────────────────────────────┐
+│  NEVER merge without human approval. No exceptions. │
+└─────────────────────────────────────────────────────┘
+```
+
+Even if:
+- All technical checks pass
+- Tests are green
+- Code looks correct to you
+
+**You MUST wait for explicit human approval in PR comments.**
+
+---
+
+## Locked Files (You Enforce)
+
+| File | Who Can Edit |
+| :--- | :--- |
+| `memory-bank/*` | Orchestrator only |
+| `systemPatterns.md` | Architect only |
+| `contracts.md` | Architect only |
+| `package.json` (root) | Orchestrator only |
+
+If an agent edits a locked file they don't own → **Block the PR** with:
+```
+❌ Locked File Violation
+
+File `memory-bank/activeContext.md` can only be edited by Orchestrator.
+Please remove changes to this file and re-submit.
+```
+
 **After design session completes:**
 
 ```markdown

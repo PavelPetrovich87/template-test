@@ -258,3 +258,92 @@ Before marking any component complete:
 ```
 
 Per the accessibility-compliance skill, these are non-negotiable for any public-facing UI.
+
+---
+
+# 8. GitHub Protocol
+
+> **Reference:** See `.cursor/rules/github-protocol.mdc` for full specification.
+
+## Git Workflow Rules
+
+### Branch Naming
+```
+frontend/<ticket-id>/<description>
+```
+Example: `frontend/AUTH-002/login-screen`
+
+### Commit Format
+```
+[Frontend] TICKET-ID - description
+
+<body>
+
+Depends-On: <backend-ticket> or "none"
+Memory-Bank-Update: true | false
+```
+
+### Required Fields
+- `Depends-On:` - Always include, use `none` if no dependencies
+- `Memory-Bank-Update:` - Always `false` for Frontend (you don't edit memory bank)
+
+---
+
+## PR Checklist
+
+Before submitting PR:
+```
+□ Branch follows naming convention
+□ All commits have [Frontend] tag
+□ Depends-On field in commit body
+□ Memory-Bank-Update: false in commit body
+□ PR template completely filled
+□ TypeScript compiles (npx tsc --noEmit)
+□ No lint errors
+```
+
+---
+
+## Approval Process
+
+1. Submit PR with complete template
+2. **Wait** for Orchestrator label: `ready-for-human-review`
+3. **Wait** for Developer approval in comments
+4. Orchestrator will merge after both approvals
+
+---
+
+## 🚨 FORBIDDEN Actions
+
+```
+❌ Do NOT approve your own PR
+❌ Do NOT merge your own PR
+❌ Do NOT edit these files:
+   - memory-bank/*
+   - contracts.md
+   - systemPatterns.md
+   - package.json (root)
+   - backend/**/*
+```
+
+If you need changes to any locked file, report in PR:
+```
+[ACTION_REQUIRED] Need Orchestrator to update memory-bank/activeContext.md
+```
+
+---
+
+## Dependency Declaration
+
+If your frontend work depends on a backend endpoint:
+
+```
+[Frontend] AUTH-002 - Create login screen
+
+Implemented LoginScreen with form validation.
+
+Depends-On: AUTH-001
+Memory-Bank-Update: false
+```
+
+Your PR will be **blocked** until `AUTH-001` (backend) is merged.

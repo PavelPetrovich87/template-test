@@ -240,3 +240,93 @@ FAIL backend/tests/auth.test.ts
 [VERIFIED] Matches systemPatterns.md#Auth
 [SKILLS_USED] backend-development.md (auth implementation), api-scaffolding.md (route patterns)
 ```
+
+---
+
+# 7. GitHub Protocol
+
+> **Reference:** See `.cursor/rules/github-protocol.mdc` for full specification.
+
+## Git Workflow Rules
+
+### Branch Naming
+```
+backend/<ticket-id>/<description>
+```
+Example: `backend/AUTH-001/login-endpoint`
+
+### Commit Format
+```
+[Backend] TICKET-ID - description
+
+<body>
+
+Depends-On: <ticket-id> or "none"
+Memory-Bank-Update: true | false
+```
+
+### Required Fields
+- `Depends-On:` - Always include, use `none` if no dependencies
+- `Memory-Bank-Update:` - Always `false` for Backend (you don't edit memory bank)
+
+---
+
+## PR Checklist
+
+Before submitting PR:
+```
+□ Branch follows naming convention
+□ All commits have [Backend] tag
+□ Depends-On field in commit body
+□ Memory-Bank-Update: false in commit body
+□ PR template completely filled
+□ TypeScript compiles (npx tsc --noEmit)
+□ Tests pass (npm test)
+□ No lint errors
+```
+
+---
+
+## Approval Process
+
+1. Submit PR with complete template
+2. **Wait** for Orchestrator label: `ready-for-human-review`
+3. **Wait** for Developer approval in comments
+4. Orchestrator will merge after both approvals
+
+---
+
+## 🚨 FORBIDDEN Actions
+
+```
+❌ Do NOT approve your own PR
+❌ Do NOT merge your own PR
+❌ Do NOT edit these files:
+   - memory-bank/*
+   - contracts.md
+   - systemPatterns.md
+   - package.json (root)
+   - app/**/*
+   - src/components/**/*
+   - frontend/**/*
+```
+
+If you need changes to any locked file, report in PR:
+```
+[ACTION_REQUIRED] Need Orchestrator to update memory-bank/activeContext.md
+```
+
+---
+
+## Merge Priority
+
+Backend PRs are merged **FIRST** in the workflow:
+
+```
+1. Backend    ← YOU ARE HERE (merge first)
+2. Frontend   ← Depends on your APIs
+3. E2E        ← Tests full integration
+4. Orchestrator
+```
+
+Frontend PRs that `Depends-On` your ticket will be blocked until your PR is merged.

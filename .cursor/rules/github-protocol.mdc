@@ -1,0 +1,304 @@
+---
+description: GITHUB PROTOCOL - Shared Git Workflow & Human-Gated Approval
+globs: 
+alwaysApply: true
+---
+# GitHub Protocol: Multi-Agent Workflow
+
+This document defines the **strict GitHub workflow** for the multi-agent system with **human-gated approval**.
+
+---
+
+## 1. Branch Naming Convention
+
+All branches MUST follow this format:
+
+```
+<agent>/<ticket-id>/<description>
+```
+
+**Examples:**
+- `backend/AUTH-001/login-endpoint`
+- `frontend/AUTH-002/login-screen`
+- `orchestrator/INFRA-003/ci-pipeline`
+
+**Rules:**
+- `<agent>` must be one of: `backend`, `frontend`, `e2e`, `orchestrator`, `architect`
+- `<ticket-id>` must match the ticket/issue ID (e.g., `AUTH-001`, `FEAT-042`)
+- `<description>` must be lowercase, kebab-case, max 50 chars
+
+---
+
+## 2. Commit Message Format
+
+All commits MUST follow this format:
+
+```
+[<AGENT>] <TICKET-ID> - <description>
+
+<optional body>
+
+Depends-On: <ticket-id(s)> or "none"
+Memory-Bank-Update: true | false
+```
+
+**Examples:**
+
+```
+[Backend] AUTH-001 - Implement login endpoint
+
+Added POST /api/auth/login with JWT tokens and rate limiting.
+
+Depends-On: none
+Memory-Bank-Update: false
+```
+
+```
+[Frontend] AUTH-002 - Create login screen UI
+
+Built LoginScreen with form validation per systemPatterns.md#Auth.
+
+Depends-On: AUTH-001
+Memory-Bank-Update: false
+```
+
+**Rules:**
+- `[<AGENT>]` tag is REQUIRED (case-sensitive: `[Backend]`, `[Frontend]`, `[E2E]`, `[Orchestrator]`, `[Architect]`)
+- `Depends-On:` field is REQUIRED (use `none` if no dependencies)
+- `Memory-Bank-Update:` field is REQUIRED (`true` if memory-bank/* files need updating)
+
+---
+
+## 3. Pull Request Template
+
+All PRs MUST use this template. Create `.github/PULL_REQUEST_TEMPLATE.md`:
+
+```markdown
+## Task
+<!-- Link to ticket/issue -->
+Ticket: #<TICKET-ID>
+Agent: <Backend | Frontend | E2E | Orchestrator | Architect>
+
+## Changes
+<!-- What was implemented? -->
+- [ ] Change 1
+- [ ] Change 2
+
+## Dependencies
+<!-- PRs or tickets this depends on -->
+- Depends-On: #<PR-NUMBER> or `none`
+
+## Contracts Updated
+<!-- Did you update systemPatterns.md? -->
+- [ ] No contract changes needed
+- [ ] Updated `systemPatterns.md` section: `#<section-name>`
+
+## Memory Bank
+<!-- Will orchestrator need to update memory-bank? -->
+- [ ] No memory bank update needed
+- [ ] Requires update to: `activeContext.md` / `progress.md`
+
+## Verification
+<!-- How was this tested? -->
+- [ ] TypeScript compiles (`npx tsc --noEmit`)
+- [ ] Linter passes (`npm run lint`)
+- [ ] Tests pass (`npm test`)
+- [ ] Manual testing completed
+
+## Screenshots (if UI)
+<!-- Add screenshots for frontend changes -->
+
+---
+### Reviewer Checklist (Do Not Edit)
+**Orchestrator Review:**
+- [ ] Commit format valid
+- [ ] Branch naming correct
+- [ ] Depends-On links valid
+- [ ] No locked file violations
+
+**Human Review:**
+- [ ] Code quality acceptable
+- [ ] Architecture appropriate
+- [ ] Tests adequate
+- [ ] Ready to merge
+```
+
+---
+
+## 4. Two-Stage Approval Process
+
+### Stage 1: Orchestrator Validation (Automated/Technical)
+
+The Orchestrator validates **technical compliance only**:
+
+| Check | Validation |
+| :--- | :--- |
+| ✅ Commit Format | Starts with `[Agent]` tag, has `Depends-On:` and `Memory-Bank-Update:` |
+| ✅ Branch Name | Follows `<agent>/<ticket-id>/<description>` |
+| ✅ Dependencies | All `Depends-On` tickets are already merged |
+| ✅ Locked Files | No unauthorized edits to protected files |
+| ✅ PR Template | All required sections filled |
+
+**Orchestrator Actions:**
+- ✅ Valid → Add label `ready-for-human-review`, tag developer
+- ❌ Invalid → Request changes with specific violations
+
+**Orchestrator DOES NOT:**
+- Judge code quality
+- Review architecture decisions
+- Assess test coverage adequacy
+
+---
+
+### Stage 2: Human Review (Developer)
+
+The human developer reviews **code quality and correctness**:
+
+| Check | Validation |
+| :--- | :--- |
+| ✅ Code Quality | Clean, readable, maintainable |
+| ✅ Architecture | Follows patterns, no tech debt |
+| ✅ Tests | Adequate coverage, meaningful assertions |
+| ✅ Security | No vulnerabilities introduced |
+| ✅ Performance | No obvious bottlenecks |
+
+**Human Actions:**
+- ✅ Approve → Add approval comment
+- ❌ Request changes → Specific feedback
+
+---
+
+### Merge Requirements
+
+**BOTH approvals are REQUIRED before merge:**
+
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│ Orchestrator Review │     │   Human Review      │
+│   (Technical)       │     │   (Quality)         │
+└─────────┬───────────┘     └─────────┬───────────┘
+          │                           │
+          │    BOTH MUST APPROVE      │
+          └───────────┬───────────────┘
+                      │
+                      ▼
+              ┌───────────────┐
+              │    MERGE      │
+              └───────────────┘
+```
+
+---
+
+## 5. Merge Order (Strict Sequence)
+
+PRs MUST be merged in this order when features span multiple agents:
+
+```
+1. Backend PRs    → Merge FIRST (APIs must exist)
+2. Frontend PRs   → Merge SECOND (consumes APIs)
+3. E2E PRs        → Merge THIRD (tests full flow)
+4. Orchestrator   → Merge LAST (updates memory bank)
+```
+
+**Enforcement:**
+- Frontend PRs with `Depends-On: backend/*` cannot merge until backend PR is merged
+- E2E PRs with `Depends-On: frontend/*` cannot merge until frontend PR is merged
+
+---
+
+## 6. Locked Files (Protected Resources)
+
+Certain files are **protected** and can only be modified by specific agents:
+
+| Protected File/Path | Allowed Agent | Reason |
+| :--- | :--- | :--- |
+| `memory-bank/*` | Orchestrator only | Central state management |
+| `contracts.md` | Architect only | API contracts |
+| `systemPatterns.md` | Architect only | System specifications |
+| `package.json` (root) | Orchestrator only | Dependency management |
+| `backend/package.json` | Backend only | Backend dependencies |
+| `frontend/package.json` | Frontend only | Frontend dependencies |
+
+**Violation Handling:**
+- If an agent edits a locked file → PR is **automatically blocked**
+- Orchestrator must request changes explaining the violation
+
+---
+
+## 7. Memory Bank Sync Protocol
+
+After every PR merge, the Orchestrator MUST update `memory-bank/activeContext.md`:
+
+### Update Template
+
+```markdown
+## Recent Merges
+
+### <TICKET-ID> - <description>
+- **Status:** ✅ Merged
+- **PR:** #<pr-number>
+- **Agent:** <agent-name>
+- **Merged By:** <developer-name>
+- **Date:** <ISO-date>
+- **Next Ticket:** <follow-up-ticket-id> or "none"
+
+### Blockers
+- <any-blockers-or-"none">
+
+### Next Steps
+- [ ] <next-task>
+```
+
+### Sync Trigger
+
+The Orchestrator syncs memory bank when:
+1. A PR is merged
+2. A sprint boundary is reached
+3. A blocker is resolved
+4. User explicitly requests sync
+
+---
+
+## 8. Quick Reference: Agent Permissions
+
+| Action | Backend | Frontend | E2E | Orchestrator | Architect |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Create branch | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Commit code | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Edit `memory-bank/*` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Edit `systemPatterns.md` | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Add PR label | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Approve PR (Stage 1) | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Approve PR (Stage 2) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Merge PR | ❌ | ❌ | ❌ | ✅* | ❌ |
+
+*Orchestrator can only merge AFTER human approval
+
+---
+
+## 9. Labels Used
+
+| Label | Applied By | Meaning |
+| :--- | :--- | :--- |
+| `needs-orchestrator-review` | GitHub Action | Awaiting technical validation |
+| `ready-for-human-review` | Orchestrator | Passed technical checks |
+| `needs-changes` | Orchestrator/Human | Changes requested |
+| `approved` | Human | Ready to merge |
+| `blocked` | Orchestrator | Waiting on dependency |
+| `backend`, `frontend`, `e2e` | GitHub Action | Agent type tag |
+
+---
+
+## 10. Emergency Override
+
+In rare cases, a merge may be needed without full approval:
+
+**Requirements for Override:**
+1. Human explicitly states: "EMERGENCY OVERRIDE: <reason>"
+2. Orchestrator logs override in `memory-bank/progress.md`
+3. Follow-up ticket created to address skipped checks
+
+**Override is NOT allowed for:**
+- Security-sensitive changes
+- Database migrations
+- Authentication/authorization changes

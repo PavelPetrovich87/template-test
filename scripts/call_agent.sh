@@ -107,13 +107,14 @@ echo "⚡ EXECUTING CURSOR-AGENT"
 echo "=========================================="
 echo ""
 
-cursor-agent chat "$TASK" \
-  @$RULE_FILE \
-  @memory-bank/activeContext.md \
-  @memory-bank/productContext.md \
-  --force \
-  --output-format stream-json \
-  | jq '.event, .data'
+cursor-agent \
+    --print "$TASK" \
+    @$RULE_FILE \
+    @memory-bank/activeContext.md \
+    @memory-bank/productContext.md \
+    --force \
+    --output-format stream-json \
+    | python3 scripts/format_agent.py
 
 EXIT_CODE=$?
 

@@ -1,0 +1,263 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate-pr:
+    name: Validate PR Format & Compliance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract Agent from Branch
+        id: branch-agent
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Branch: $BRANCH_NAME"
+          
+          # Extract agent from branch name (format: agent/ticket/description)
+          if [[ "$BRANCH_NAME" =~ ^(backend|frontend|e2e|orchestrator|architect)/ ]]; then
+            AGENT="${BASH_REMATCH[1]}"
+            echo "agent=$AGENT" >> $GITHUB_OUTPUT
+            echo "✅ Valid agent prefix: $AGENT"
+          else
+            echo "❌ Invalid branch format. Expected: <agent>/<ticket-id>/<description>"
+            echo "agent=invalid" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate Branch Naming
+        id: branch-validation
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          PATTERN="^(backend|frontend|e2e|orchestrator|architect)/[A-Z]+-[0-9]+/[a-z0-9-]+$"
+          
+          if [[ "$BRANCH_NAME" =~ $PATTERN ]]; then
+            echo "✅ Branch name is valid: $BRANCH_NAME"
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Branch name is INVALID: $BRANCH_NAME"
+            echo "Expected format: <agent>/<TICKET-ID>/<description>"
+            echo "Examples: backend/AUTH-001/login-endpoint, frontend/FEAT-042/user-profile"
+            echo "valid=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate Commit Messages
+        id: commit-validation
+        run: |
+          COMMITS=$(git log --format="%s|%b" origin/${{ github.base_ref }}..${{ github.head_ref }} --no-merges)
+          
+          VALID=true
+          MISSING_TAG=false
+          MISSING_DEPENDS=false
+          MISSING_MEMORY=false
+          
+          echo "Validating commits..."
+          
+          while IFS= read -r commit; do
+            if [[ -z "$commit" ]]; then
+              continue
+            fi
+            
+            SUBJECT=$(echo "$commit" | cut -d'|' -f1)
+            BODY=$(echo "$commit" | cut -d'|' -f2-)
+            
+            echo "Checking: $SUBJECT"
+            
+            # Check for [Agent] tag
+            if [[ ! "$SUBJECT" =~ ^\[(Backend|Frontend|E2E|Orchestrator|Architect)\] ]]; then
+              echo "❌ Missing [Agent] tag in: $SUBJECT"
+              MISSING_TAG=true
+              VALID=false
+            fi
+            
+            # Check for Depends-On field in body
+            if [[ ! "$BODY" =~ Depends-On: ]]; then
+              echo "⚠️ Missing 'Depends-On:' field in commit body"
+              MISSING_DEPENDS=true
+            fi
+            
+            # Check for Memory-Bank-Update field in body
+            if [[ ! "$BODY" =~ Memory-Bank-Update: ]]; then
+              echo "⚠️ Missing 'Memory-Bank-Update:' field in commit body"
+              MISSING_MEMORY=true
+            fi
+            
+          done <<< "$COMMITS"
+          
+          echo "missing_tag=$MISSING_TAG" >> $GITHUB_OUTPUT
+          echo "missing_depends=$MISSING_DEPENDS" >> $GITHUB_OUTPUT
+          echo "missing_memory=$MISSING_MEMORY" >> $GITHUB_OUTPUT
+          echo "valid=$VALID" >> $GITHUB_OUTPUT
+
+      - name: Check Locked Files
+        id: locked-files
+        run: |
+          AGENT="${{ steps.branch-agent.outputs.agent }}"
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.head_ref }})
+          
+          VIOLATIONS=""
+          
+          for FILE in $CHANGED_FILES; do
+            # memory-bank/* - Only Orchestrator
+            if [[ "$FILE" =~ ^memory-bank/ ]] && [[ "$AGENT" != "orchestrator" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (only Orchestrator can edit memory-bank/*)\n"
+            fi
+            
+            # systemPatterns.md - Only Architect
+            if [[ "$FILE" == "systemPatterns.md" ]] && [[ "$AGENT" != "architect" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (only Architect can edit systemPatterns.md)\n"
+            fi
+            
+            # contracts.md - Only Architect
+            if [[ "$FILE" == "contracts.md" ]] && [[ "$AGENT" != "architect" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (only Architect can edit contracts.md)\n"
+            fi
+            
+            # Root package.json - Only Orchestrator
+            if [[ "$FILE" == "package.json" ]] && [[ "$AGENT" != "orchestrator" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (only Orchestrator can edit root package.json)\n"
+            fi
+            
+            # Backend files - Only Backend
+            if [[ "$FILE" =~ ^backend/ ]] && [[ "$AGENT" == "frontend" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (Frontend cannot edit backend/* files)\n"
+            fi
+            
+            # Frontend files - Only Frontend
+            if [[ "$FILE" =~ ^(app/|src/components/|frontend/) ]] && [[ "$AGENT" == "backend" ]]; then
+              VIOLATIONS="${VIOLATIONS}❌ $FILE (Backend cannot edit frontend files)\n"
+            fi
+          done
+          
+          if [[ -n "$VIOLATIONS" ]]; then
+            echo "violations=true" >> $GITHUB_OUTPUT
+            echo -e "Locked file violations:\n$VIOLATIONS"
+            echo "violation_details<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$VIOLATIONS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No locked file violations"
+            echo "violations=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate PR Template
+        id: pr-template
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          
+          MISSING_SECTIONS=""
+          
+          # Check for required sections
+          if [[ ! "$PR_BODY" =~ "## Task" ]]; then
+            MISSING_SECTIONS="${MISSING_SECTIONS}- ## Task\n"
+          fi
+          
+          if [[ ! "$PR_BODY" =~ "## Changes" ]]; then
+            MISSING_SECTIONS="${MISSING_SECTIONS}- ## Changes\n"
+          fi
+          
+          if [[ ! "$PR_BODY" =~ "## Dependencies" ]]; then
+            MISSING_SECTIONS="${MISSING_SECTIONS}- ## Dependencies\n"
+          fi
+          
+          if [[ ! "$PR_BODY" =~ "## Verification" ]]; then
+            MISSING_SECTIONS="${MISSING_SECTIONS}- ## Verification\n"
+          fi
+          
+          if [[ -n "$MISSING_SECTIONS" ]]; then
+            echo "⚠️ Missing PR template sections:"
+            echo -e "$MISSING_SECTIONS"
+            echo "missing_sections=true" >> $GITHUB_OUTPUT
+            echo "missing_details<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$MISSING_SECTIONS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "✅ All required PR template sections present"
+            echo "missing_sections=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add Agent Label
+        if: steps.branch-agent.outputs.agent != 'invalid'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const agent = '${{ steps.branch-agent.outputs.agent }}';
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: [agent, 'needs-orchestrator-review']
+            });
+
+      - name: Create Validation Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchValid = '${{ steps.branch-validation.outputs.valid }}' === 'true';
+            const commitValid = '${{ steps.commit-validation.outputs.valid }}' === 'true';
+            const missingDepends = '${{ steps.commit-validation.outputs.missing_depends }}' === 'true';
+            const missingMemory = '${{ steps.commit-validation.outputs.missing_memory }}' === 'true';
+            const lockedViolations = '${{ steps.locked-files.outputs.violations }}' === 'true';
+            const missingSections = '${{ steps.pr-template.outputs.missing_sections }}' === 'true';
+            
+            let summary = '## 🤖 PR Validation Report\n\n';
+            
+            // Branch validation
+            summary += '### Branch Naming\n';
+            summary += branchValid ? '✅ Valid\n' : '❌ Invalid format. Expected: `<agent>/<TICKET-ID>/<description>`\n';
+            
+            // Commit validation
+            summary += '\n### Commit Messages\n';
+            summary += commitValid ? '✅ All commits have [Agent] tag\n' : '❌ Missing [Agent] tag in commits\n';
+            summary += missingDepends ? '⚠️ Some commits missing `Depends-On:` field\n' : '✅ `Depends-On:` field present\n';
+            summary += missingMemory ? '⚠️ Some commits missing `Memory-Bank-Update:` field\n' : '✅ `Memory-Bank-Update:` field present\n';
+            
+            // Locked files
+            summary += '\n### Locked Files\n';
+            if (lockedViolations) {
+              summary += '❌ Locked file violations detected:\n';
+              summary += '```\n${{ steps.locked-files.outputs.violation_details }}\n```\n';
+            } else {
+              summary += '✅ No locked file violations\n';
+            }
+            
+            // PR Template
+            summary += '\n### PR Template\n';
+            if (missingSections) {
+              summary += '⚠️ Missing sections:\n';
+              summary += '```\n${{ steps.pr-template.outputs.missing_details }}\n```\n';
+            } else {
+              summary += '✅ All required sections present\n';
+            }
+            
+            // Overall status
+            const allPassed = branchValid && commitValid && !lockedViolations && !missingSections;
+            summary += '\n---\n';
+            summary += allPassed 
+              ? '### ✅ Ready for Orchestrator Review\n' 
+              : '### ❌ Validation Failed - Please Fix Issues Above\n';
+            
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary
+            });
+
+      - name: Fail if Critical Violations
+        if: |
+          steps.branch-validation.outputs.valid == 'false' ||
+          steps.commit-validation.outputs.valid == 'false' ||
+          steps.locked-files.outputs.violations == 'true'
+        run: |
+          echo "❌ PR validation failed due to critical violations"
+          echo "Please fix the issues listed in the validation summary comment"
+          exit 1
+

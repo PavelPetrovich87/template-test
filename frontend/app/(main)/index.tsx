@@ -6,6 +6,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Home Screen</Text>
       <Text style={styles.subtitle}>Placeholder - Content to be implemented</Text>
+      <Text style={styles.helloWorld}>hello world</Text>
     </View>
   )
 }
@@ -25,5 +26,10 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     opacity: 0.7,
+  },
+  helloWorld: {
+    fontSize: 16,
+    marginTop: 16,
+    color: 'green',
   },
 })
