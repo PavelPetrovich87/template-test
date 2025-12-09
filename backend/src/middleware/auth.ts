@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { jwtVerify } from 'jose'
+import { jwtVerify, type JWTPayload } from 'jose'
 import { env } from '../config/env'
 import { CustomError } from './errorHandler'
 
@@ -9,6 +9,24 @@ export interface AuthenticatedRequest extends Request {
     email: string
     role?: string
   }
+}
+
+export interface SupabaseJWTPayload extends JWTPayload {
+  sub: string
+  email: string
+  role: string
+  user_metadata: {
+    username?: string
+    role?: string
+    [key: string]: unknown
+  }
+  app_metadata: {
+    provider?: string
+    [key: string]: unknown
+  }
+  iat: number
+  exp: number
+  aud: string
 }
 
 export const authenticate = async (
@@ -25,18 +43,19 @@ export const authenticate = async (
 
     const token = authHeader.slice(7)
 
-    if (!env.JWT_SECRET) {
+    if (!env.SUPABASE_JWT_SECRET) {
       throw new CustomError(500, 'CONFIG_ERROR', 'JWT secret not configured')
     }
 
     try {
-      const secret = new TextEncoder().encode(env.JWT_SECRET)
-      const { payload } = await jwtVerify(token, secret)
+      const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET)
+      const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] })
+      const supabasePayload = payload as SupabaseJWTPayload
 
       req.user = {
-        userId: payload.userId as string,
-        email: payload.email as string,
-        role: payload.role as string | undefined
+        userId: supabasePayload.sub,
+        email: supabasePayload.email,
+        role: supabasePayload.user_metadata?.role
       }
 
       next()

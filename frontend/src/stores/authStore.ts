@@ -1,6 +1,6 @@
-import type { User } from '@supabase/supabase-js'
+import type { Session, User } from '@supabase/supabase-js'
 import { create } from 'zustand'
-import { supabase } from '@/src/config/supabase'
+import { AuthService } from '@/src/services/AuthService'
 
 export interface IUser {
   id: string
@@ -11,6 +11,7 @@ export interface IUser {
 export interface IAuthState {
   isAuthenticated: boolean
   isLoading: boolean
+  accessToken: string | null
   user: IUser | null
 }
 
@@ -18,9 +19,11 @@ export interface IAuthActions {
   setAuthenticated: (value: boolean) => void
   setLoading: (value: boolean) => void
   setUser: (user: IUser | null) => void
-  logout: () => void
+  setSession: (session: Session | null) => void
+  logout: () => Promise<void>
   login: (email: string, password: string) => Promise<IUser>
   register: (email: string, password: string) => Promise<IUser>
+  initializeAuth: () => Promise<void>
 }
 
 export type AuthStore = IAuthState & IAuthActions
@@ -42,29 +45,72 @@ const mapSupabaseUser = (user: User): IUser => {
   }
 }
 
+const deriveAuthState = (
+  session: Session | null
+): Pick<IAuthState, 'accessToken' | 'isAuthenticated' | 'user'> => {
+  if (!session || !session.user) {
+    return {
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+    }
+  }
+
+  const mappedUser = mapSupabaseUser(session.user)
+
+  return {
+    user: mappedUser,
+    accessToken: session.access_token ?? null,
+    isAuthenticated: true,
+  }
+}
+
 export const useAuthStore = create<AuthStore>((set) => ({
   isAuthenticated: false,
   isLoading: false,
+  accessToken: null,
   user: null,
   setAuthenticated: (value) => set({ isAuthenticated: value }),
   setLoading: (value) => set({ isLoading: value }),
   setUser: (user) => set({ user }),
-  logout: () => set({ isAuthenticated: false, user: null }),
-  login: async (email, password) => {
+  setSession: (session) => set(deriveAuthState(session)),
+  logout: async () => {
     set({ isLoading: true })
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await AuthService.signOut()
 
       if (error) {
         throw error
       }
 
-      if (!data.user) {
+      set({ isAuthenticated: false, user: null, accessToken: null })
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+  login: async (email, password) => {
+    set({ isLoading: true })
+    try {
+      const { data, error } = await AuthService.signIn(email, password)
+
+      if (error) {
+        throw error
+      }
+
+      if (!data.session) {
+        throw new Error('Authentication failed: session was not returned')
+      }
+
+      if (!data.session.user) {
         throw new Error('Authentication failed: user was not returned')
       }
 
-      const authenticatedUser = mapSupabaseUser(data.user)
-      set({ user: authenticatedUser, isAuthenticated: true })
+      const authenticatedUser = mapSupabaseUser(data.session.user)
+      set({
+        user: authenticatedUser,
+        isAuthenticated: true,
+        accessToken: data.session.access_token ?? null,
+      })
 
       return authenticatedUser
     } finally {
@@ -74,20 +120,43 @@ export const useAuthStore = create<AuthStore>((set) => ({
   register: async (email, password) => {
     set({ isLoading: true })
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await AuthService.signUp(email, password)
 
       if (error) {
         throw error
       }
 
-      if (!data.user) {
+      if (!data.session) {
+        throw new Error('Registration failed: session was not returned')
+      }
+
+      if (!data.session.user) {
         throw new Error('Registration failed: user was not returned')
       }
 
-      const registeredUser = mapSupabaseUser(data.user)
-      set({ user: registeredUser, isAuthenticated: true })
+      const registeredUser = mapSupabaseUser(data.session.user)
+      set({
+        user: registeredUser,
+        isAuthenticated: true,
+        accessToken: data.session.access_token ?? null,
+      })
 
       return registeredUser
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+  initializeAuth: async () => {
+    set({ isLoading: true })
+    try {
+      const { data, error } = await AuthService.getSession()
+
+      if (error) {
+        throw error
+      }
+
+      const nextState = deriveAuthState(data.session ?? null)
+      set(nextState)
     } finally {
       set({ isLoading: false })
     }

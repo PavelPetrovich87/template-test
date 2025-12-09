@@ -7,20 +7,12 @@ import { useEffect } from 'react'
 import 'react-native-reanimated'
 
 import { useColorScheme } from '@/components/useColorScheme'
-import type { IAuthState } from '@/src/stores/authStore'
+import { AuthService } from '@/src/services/AuthService'
+import { useAuthStore } from '@/src/stores/authStore'
 
 export {
   ErrorBoundary,
 } from 'expo-router'
-
-// Placeholder auth state - to be replaced with actual auth store
-const useAuth = (): IAuthState => {
-  return {
-    isAuthenticated: false,
-    isLoading: false,
-    user: null,
-  }
-}
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -50,12 +42,30 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
-  const auth = useAuth()
+  const { isAuthenticated, initializeAuth, setSession } = useAuthStore((state) => ({
+    isAuthenticated: state.isAuthenticated,
+    initializeAuth: state.initializeAuth,
+    setSession: state.setSession,
+  }))
+
+  useEffect(() => {
+    initializeAuth()
+  }, [initializeAuth])
+
+  useEffect(() => {
+    const { data } = AuthService.onAuthChange(async (_event, session) => {
+      setSession(session)
+    })
+
+    return () => {
+      data.subscription.unsubscribe()
+    }
+  }, [setSession])
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        {auth.isAuthenticated ? (
+        {isAuthenticated ? (
           <>
             <Stack.Screen name="(main)" />
             <Stack.Screen name="+not-found" />

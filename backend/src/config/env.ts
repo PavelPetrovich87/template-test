@@ -8,24 +8,30 @@ interface EnvConfig {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   SUPABASE_SERVICE_ROLE_KEY: string
-  JWT_SECRET: string
+  SUPABASE_JWT_SECRET: string
   CORS_ORIGIN: string
 }
 
-const getEnvVar = (key: string, defaultValue?: string, required: boolean = false): string => {
+const getEnvVar = (key: string, defaultValue: string | undefined, required: boolean): string => {
   const value = process.env[key]
   if (!value && !defaultValue && required) {
     throw new Error(`Missing required environment variable: ${key}`)
   }
-  return value || defaultValue || ''
+  if (value) {
+    return value
+  }
+  if (defaultValue !== undefined) {
+    return defaultValue
+  }
+  return ''
 }
 
 export const env: EnvConfig = {
-  PORT: parseInt(getEnvVar('PORT', '3000'), 10),
-  NODE_ENV: getEnvVar('NODE_ENV', 'development'),
+  PORT: parseInt(getEnvVar('PORT', '3000', false), 10),
+  NODE_ENV: getEnvVar('NODE_ENV', 'development', false),
   SUPABASE_URL: getEnvVar('SUPABASE_URL', '', false),
   SUPABASE_ANON_KEY: getEnvVar('SUPABASE_ANON_KEY', '', false),
   SUPABASE_SERVICE_ROLE_KEY: getEnvVar('SUPABASE_SERVICE_ROLE_KEY', '', false),
-  JWT_SECRET: getEnvVar('JWT_SECRET', '', false),
-  CORS_ORIGIN: getEnvVar('CORS_ORIGIN', '*')
+  SUPABASE_JWT_SECRET: getEnvVar('SUPABASE_JWT_SECRET', undefined, true),
+  CORS_ORIGIN: getEnvVar('CORS_ORIGIN', '*', false)
 }
