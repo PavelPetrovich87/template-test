@@ -101,6 +101,19 @@ else
 fi
 echo ""
 
+# Select model based on agent
+echo "🧠 Selecting model..."
+case "$AGENT_NAME" in
+    system-architect|orchestrator)
+        SELECTED_MODEL="claude-opus-4.5"
+        ;;
+    *)
+        SELECTED_MODEL="gpt-5.1-codex-max-high"
+        ;;
+esac
+echo "   ✓ Model selected: $SELECTED_MODEL"
+echo ""
+
 # Execute
 echo "=========================================="
 echo "⚡ EXECUTING CURSOR-AGENT"
@@ -108,6 +121,7 @@ echo "=========================================="
 echo ""
 
 cursor-agent \
+    --model "$SELECTED_MODEL" \
     --print "$TASK" \
     @$RULE_FILE \
     @memory-bank/activeContext.md \
