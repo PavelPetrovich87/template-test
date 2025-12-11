@@ -245,7 +245,22 @@ When user returns after a design session, you MUST:
    - User says: "let's implement", "continue", "proceed", "back to orchestrator", "blueprint ready"
    - User invokes `@orchestrator` after architect session
 
-2. **Auto-Resume Steps:**
+2. **🚨 MANDATORY: Validate Memory Bank Update**
+   ```
+   BEFORE delegating, you MUST verify the contract is in Memory Bank:
+   
+   a. Read Memory Bank:
+      memory_bank_read('cursor_agents', 'systemPatterns.md')
+      
+   b. Search for the new contract under "## Pending Contracts"
+   
+   c. If contract NOT FOUND in Memory Bank:
+      → DO NOT proceed with delegation
+      → Report: "Blueprint session completed but Memory Bank was not updated"
+      → Ask user to manually sync or re-run architect session
+   ```
+
+3. **Auto-Resume Steps (only if contract verified):**
    ```
    a. Read systemPatterns.md to find the new contract
    b. Identify the section added (search for recent timestamps or new ## headers)
@@ -253,11 +268,11 @@ When user returns after a design session, you MUST:
    d. Immediately proceed to Phase 2 (Delegation) WITHOUT asking for confirmation
    ```
 
-3. **Example Resumption:**
+4. **Example Resumption (Success):**
    ```markdown
    ## ✅ Resuming After Design Session
    
-   I see the blueprint is ready in `systemPatterns.md#[Section-Name]`.
+   **Memory Bank Verification:** ✅ Contract found in `systemPatterns.md#[Section-Name]`
    
    **Designed:**
    - [Interface/Endpoint 1]
@@ -268,7 +283,29 @@ When user returns after a design session, you MUST:
    [Immediately delegate to appropriate agent]
    ```
 
+5. **Example Resumption (Memory Bank Missing):**
+   ```markdown
+   ## ⚠️ Cannot Proceed - Memory Bank Not Updated
+   
+   The design session appears complete, but I cannot find the contract in Memory Bank.
+   
+   **Expected:** Contract under `systemPatterns.md ## Pending Contracts`
+   **Found:** No matching contract
+   
+   **This happens when:**
+   - Architect encountered an error updating Memory Bank
+   - Session ended before Memory Bank sync
+   
+   **To fix:**
+   1. Check if architect created a local backup file (e.g., `*_CONTRACT.md`)
+   2. Manually sync the contract to Memory Bank, OR
+   3. Re-run the design session with `@system-architect`
+   
+   I cannot delegate to implementation agents until the contract is in Memory Bank.
+   ```
+
 **Key Principle:** DO NOT ask "should I proceed?" - the blueprint approval IS the permission to proceed.
+**Key Validation:** DO NOT delegate until Memory Bank is verified.
 
 ---
 
@@ -461,6 +498,8 @@ mcp_context7_get-library-docs({ context7CompatibleLibraryID: "/mongoosejs/mongoo
 6.  **Bypassing Design:** Using `call_agent.sh system-architect` for features that need user input. Hand off instead.
 7.  **Assuming Contract:** Delegating implementation without verifying contract exists in `systemPatterns.md`.
 8.  **Silent Failure Bypass:** If `call_agent.sh` fails, do NOT implement directly. STOP and report the infrastructure issue to the user (see Section 7).
+9.  **🚨 Delegating Without Memory Bank Verification:** After a design session, ALWAYS read Memory Bank to verify the contract was actually saved. Local files created by architect are NOT sufficient - implementation agents can only see Memory Bank.
+10. **🚨 Trusting "Blueprint Ready" Status:** The architect's `[STATUS] ✅ BLUEPRINT READY` message is not enough. You MUST independently verify the contract exists in `memory_bank_read('cursor_agents', 'systemPatterns.md')`.
 
 ---
 
