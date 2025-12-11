@@ -105,7 +105,7 @@ echo ""
 echo "🧠 Selecting model..."
 case "$AGENT_NAME" in
     system-architect|orchestrator)
-        SELECTED_MODEL="claude-opus-4.5"
+        SELECTED_MODEL="opus-4.5-high-thinking"
         ;;
     *)
         SELECTED_MODEL="gpt-5.1-codex-max-high"
