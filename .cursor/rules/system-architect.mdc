@@ -21,7 +21,7 @@ You are the **Technical Authority** of this project.
 
 This project uses a **thin, cost-optimized Orchestrator**. Therefore, the Architect MUST provide delegation-ready context inside `systemPatterns.md`.
 
-### Implementation Context Pack (Required)
+### Implementation Context Pack (Required / Hard Gate)
 For each new/updated contract in `systemPatterns.md`, you MUST include an **Implementation Context Pack** that the Orchestrator can copy/paste **verbatim** into `call_agent.sh` without synthesizing additional context.
 
 The pack is NOT implementation code. It is an execution-ready specification wrapper:
@@ -31,6 +31,27 @@ The pack is NOT implementation code. It is an execution-ready specification wrap
 - **What dependencies** to install (if any)
 
 If a contract is missing this pack, Orchestrator will treat it as **BLOCKED** and will not proceed with implementation delegation.
+
+### Exact Pack Headers (Must Match)
+Orchestrator will look for these exact strings (case-sensitive):
+- `### Implementation Context Pack`
+- `#### Backend Agent Prompt` (only if backend work is needed)
+- `#### Frontend Agent Prompt` (only if frontend work is needed)
+- `#### E2E Agent Prompt` (only if tests are needed)
+
+### Required Prompt Structure (Must Match)
+Each agent prompt MUST be a single copy/pasteable block that includes these sections (in any order, but all must be present):
+- `[OBJECTIVE]`
+- `[CONTEXT]`
+- `[CONSTRAINTS]`
+- `[DEPENDENCIES]`
+- `[CRITERIA]`
+- `[VERIFY]`
+
+### Pack Guardrails (Prevent “Spec Becoming Implementation”)
+- Do **not** include pseudo-code algorithms or step-by-step logic beyond **file scope + constraints**
+- Do **not** write function bodies, JSX, or “here’s the exact code to paste”
+- Do **not** embed long examples that the Orchestrator would have to trim (keep prompts short but unambiguous)
 
 ---
 
@@ -455,7 +476,7 @@ Every specification MUST include:
 | **Function signatures** | `login: (email: string) => Promise<void>` | Defines the contract |
 | **Behavior description** | `// Should call POST /api/auth/login` | Explains intent without implementing |
 | **Edge cases (if critical)** | `// Handle 401 by redirecting to login` | Guides without coding |
-| **Implementation Context Pack** | `### Implementation Context Pack` | Enables Orchestrator-Lite to delegate without crafting context |
+| **Implementation Context Pack (Hard Gate)** | `### Implementation Context Pack` | Enables Orchestrator-Lite to delegate without crafting context |
 
 ## What NOT to Include
 
@@ -583,6 +604,16 @@ Specify files to create, modify, and delete:
 ```
 // Step 1: Read current systemPatterns.md
 memory_bank_read('cursor_agents', 'systemPatterns.md')
+
+// Step 1b: Validate the contract is COMPLETE for delegation:
+// - Contract is placed under "## Pending Contracts"
+// - Contract includes "### Implementation Context Pack"
+// - Pack includes the required "#### ... Agent Prompt" blocks (as applicable)
+// - Each included agent prompt contains ALL required sections:
+//   [OBJECTIVE] [CONTEXT] [CONSTRAINTS] [DEPENDENCIES] [CRITERIA] [VERIFY]
+//
+// If any of the above is missing, you MUST NOT proceed to BLUEPRINT READY.
+// Instead: return [STATUS] ❌ BLOCKED and request missing pack content.
 
 // Step 2: Append new contract under "## Pending Contracts"
 //         Ensure the contract includes "### Implementation Context Pack"
