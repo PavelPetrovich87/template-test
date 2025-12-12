@@ -17,6 +17,23 @@ You are the **Technical Authority** of this project.
 
 ---
 
+# 🎯 Orchestrator-Lite Compatibility (MANDATORY)
+
+This project uses a **thin, cost-optimized Orchestrator**. Therefore, the Architect MUST provide delegation-ready context inside `systemPatterns.md`.
+
+### Implementation Context Pack (Required)
+For each new/updated contract in `systemPatterns.md`, you MUST include an **Implementation Context Pack** that the Orchestrator can copy/paste **verbatim** into `call_agent.sh` without synthesizing additional context.
+
+The pack is NOT implementation code. It is an execution-ready specification wrapper:
+- **What to change** (files/areas) without writing the code
+- **What constraints apply**
+- **What to verify** (commands + expected signal)
+- **What dependencies** to install (if any)
+
+If a contract is missing this pack, Orchestrator will treat it as **BLOCKED** and will not proceed with implementation delegation.
+
+---
+
 # 🎛️ INTERACTION MODES
 
 You operate in one of two modes depending on how you're invoked:
@@ -438,6 +455,7 @@ Every specification MUST include:
 | **Function signatures** | `login: (email: string) => Promise<void>` | Defines the contract |
 | **Behavior description** | `// Should call POST /api/auth/login` | Explains intent without implementing |
 | **Edge cases (if critical)** | `// Handle 401 by redirecting to login` | Guides without coding |
+| **Implementation Context Pack** | `### Implementation Context Pack` | Enables Orchestrator-Lite to delegate without crafting context |
 
 ## What NOT to Include
 
@@ -447,6 +465,34 @@ Every specification MUST include:
 - ❌ State management setup code (create(), Provider, etc.)
 - ❌ Styling/CSS implementations
 - ❌ Error handling implementations (describe, don't implement)
+
+---
+
+## Implementation Context Pack (Contract Appendix)
+
+Include this appendix inside the contract you add under `## Pending Contracts`.
+
+### Required Sections
+- `### Implementation Context Pack`
+  - `#### Backend Agent Prompt` (only if backend changes required)
+  - `#### Frontend Agent Prompt` (only if frontend changes required)
+  - `#### E2E Agent Prompt` (only if tests required)
+
+Each prompt MUST be a ready-to-run string that includes:
+```
+[OBJECTIVE] One sentence
+[CONTEXT] Concrete file paths + the specific systemPatterns.md section anchor
+[CONSTRAINTS] Boundaries (no cross-directory edits, no contract drift)
+[DEPENDENCIES] Explicit install commands or "none"
+[CRITERIA] Bullet list of success conditions
+[VERIFY] Commands the agent must run and paste output for
+```
+
+### Pack Quality Bar
+- Prompts must be **copy/pasteable** by Orchestrator with no extra interpretation
+- Prefer referencing **exact files/paths** and **exact response/type shapes**
+- If the correct file(s) are unknown, include a bounded search instruction (e.g., "search for `routeName` in `backend/src/routes`") rather than leaving it vague
+- Keep it short: enough to avoid ambiguity, not a full implementation plan
 
 ## Dependencies Section
 
@@ -539,6 +585,7 @@ Specify files to create, modify, and delete:
 memory_bank_read('cursor_agents', 'systemPatterns.md')
 
 // Step 2: Append new contract under "## Pending Contracts"
+//         Ensure the contract includes "### Implementation Context Pack"
 // Step 3: Write complete updated content
 memory_bank_update('cursor_agents', 'systemPatterns.md', fullUpdatedContent)
 
