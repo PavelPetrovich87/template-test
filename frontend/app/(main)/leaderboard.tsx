@@ -32,6 +32,8 @@ const getTabLabel = (type: LeaderboardType): string => {
       return 'Acc'
     case 'streak':
       return 'Strk'
+    default:
+      return String(type)
   }
 }
 

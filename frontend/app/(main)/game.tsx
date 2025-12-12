@@ -55,7 +55,8 @@ export default function GameScreen() {
       })
       reset()
     }
-  }, [reset])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (user && phase === 'idle') {
