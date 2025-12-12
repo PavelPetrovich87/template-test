@@ -104,11 +104,14 @@ echo ""
 # Select model based on agent
 echo "🧠 Selecting model..."
 case "$AGENT_NAME" in
-    system-architect|orchestrator)
-        SELECTED_MODEL="opus-4.5-high-thinking"
+    orchestrator)
+        SELECTED_MODEL="composer-1"
+        ;;
+    system-architect)
+        SELECTED_MODEL="gpt-5.2-high"
         ;;
     *)
-        SELECTED_MODEL="gpt-5.1-codex-max-high"
+        SELECTED_MODEL="composer-1"
         ;;
 esac
 echo "   ✓ Model selected: $SELECTED_MODEL"
